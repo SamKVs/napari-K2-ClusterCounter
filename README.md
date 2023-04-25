@@ -7,7 +7,9 @@
 [![codecov](https://codecov.io/gh/SamKVs/napari-k2-clustercounter/branch/main/graph/badge.svg)](https://codecov.io/gh/SamKVs/napari-k2-clustercounter)
 [![napari hub](https://img.shields.io/endpoint?url=https://api.napari-hub.org/shields/napari-k2-clustercounter)](https://napari-hub.org/plugins/napari-k2-clustercounter)
 
-later
+<img src="static/Logo.png">
+
+# Plugin in development
 
 ----------------------------------
 

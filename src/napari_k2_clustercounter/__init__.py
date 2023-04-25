@@ -1,7 +1,8 @@
 __version__ = "0.0.1"
-from ._widget import ExampleQWidget, example_magic_widget
+from ._widget import ClusterCounter
+from . import ClickLabel
+from . import DrawLine
 
 __all__ = (
-    "ExampleQWidget",
-    "example_magic_widget",
+    ClusterCounter,
 )
