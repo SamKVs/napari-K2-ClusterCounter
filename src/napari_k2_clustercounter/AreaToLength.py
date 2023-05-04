@@ -35,8 +35,4 @@ def area_to_length(area):
     fil.medskel(verbose=False)
     fil.analyze_skeletons(branch_thresh=40* u.pix, skel_thresh=10 * u.pix, prune_criteria='length')
 
-
-    plt.imshow(fil.skeleton_longpath)
-    plt.show()
-    print(max(fil.lengths()))
     return max(fil.lengths())

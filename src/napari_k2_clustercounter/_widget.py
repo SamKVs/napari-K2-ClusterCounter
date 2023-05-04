@@ -233,7 +233,12 @@ class ClusterCounter(QWidget):
                 canvas_back = np.zeros(field, dtype=bool)
                 canvas_back = draw_path(poly, width[index] * self.lineBackSpinBox.value(), canvas_back)
                 line_back = canvas_back * np.invert(self.viewer.layers[self.clusterComboBox.currentText() + '_mask'].data.astype(bool))
-                self.viewer.add_labels(line_back, name=self.clusterComboBox.currentText() + '_line_back')
+                self.viewer.add_labels(line_back,
+                                       name=str(self.clusterComboBox.currentText()) + '_line_back',
+                                       color={1: "red"},
+                                       opacity=0.50)
+                self.viewer.layers[str(self.clusterComboBox.currentText()) + '_line_back'].scale = self.viewer.layers[
+                    self.clusterComboBox.currentText()].scale
                 intensity_back = np.mean(self.viewer.layers[self.clusterComboBox.currentText()].data[line_back])
 
             if self.TempDb is not None:
