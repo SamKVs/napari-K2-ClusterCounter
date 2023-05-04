@@ -19,6 +19,7 @@ from skimage import measure
 from scipy import ndimage as ndi
 from .DrawLine import draw_path
 from .ClickLabel import ClickLabel
+from .AreaToLength import area_to_length
 import sqlite3
 import pandas as pd
 import os
@@ -226,10 +227,27 @@ class ClusterCounter(QWidget):
         for index, poly in enumerate(polys):
             canvas = np.zeros(field, dtype=bool)
             canvas = draw_path(poly, width[index], canvas)
+
+            #Background
+            if self.lineBackSpinBox.value() != 0:
+                canvas_back = np.zeros(field, dtype=bool)
+                canvas_back = draw_path(poly, width[index] * self.lineBackSpinBox.value(), canvas_back)
+                line_back = canvas_back * np.invert(self.viewer.layers[self.clusterComboBox.currentText() + '_mask'].data.astype(bool))
+                self.viewer.add_labels(line_back,
+                                       name=str(self.clusterComboBox.currentText()) + '_line_back',
+                                       color={1: "red"},
+                                       opacity=0.50)
+                self.viewer.layers[str(self.clusterComboBox.currentText()) + '_line_back'].scale = self.viewer.layers[
+                    self.clusterComboBox.currentText()].scale
+                intensity_back = np.mean(self.viewer.layers[self.clusterComboBox.currentText()].data[line_back])
+
             if self.TempDb is not None:
                 self.TempDb["Line"]["length"].append(self.getlength(poly))
                 self.TempDb["Line"]["width"].append(width[index])
                 self.TempDb["Line"]["area"].append(np.sum(canvas))
+                self.TempDb["Line"]["bg_width"].append(width[index] * self.lineBackSpinBox.value())
+                self.TempDb["Line"]["bg_area"].append(np.sum(line_back))
+                self.TempDb["Line"]["bg_intensity"].append(intensity_back)
             canvases.append(canvas)
         return canvases
 
@@ -261,16 +279,16 @@ class ClusterCounter(QWidget):
 
     # UI FUNCTIONS
     def typeImgM(self):
-        self.manualButton.setPixmap(QPixmap('MAN_T.png'))
-        self.roiButton.setPixmap(QPixmap('ROI_F.png'))
+        self.manualButton.setPixmap(QPixmap(str(f"{os.path.dirname(os.path.abspath(__file__))}/static/MAN_T.png")))
+        self.roiButton.setPixmap(QPixmap(str(f"{os.path.dirname(os.path.abspath(__file__))}/static/ROI_F.png")))
         self.changevis(self.dict_organize["ManualROI"], True)
         self.changevis(self.dict_organize["ROIChannel"], False)
         self.typeImgMchanged()
         self.activeOption = "Manual"
 
     def typeImgR(self):
-        self.manualButton.setPixmap(QPixmap('MAN_F.png'))
-        self.roiButton.setPixmap(QPixmap('ROI_T.png'))
+        self.manualButton.setPixmap(QPixmap(str(f"{os.path.dirname(os.path.abspath(__file__))}/static/MAN_F.png")))
+        self.roiButton.setPixmap(QPixmap(str(f"{os.path.dirname(os.path.abspath(__file__))}/static/ROI_T.png")))
         self.changevis(self.dict_organize["ROIChannel"], True)
         self.changevis(self.dict_organize["ManualROI"], False)
         self.activeOption = "ROI"
@@ -436,19 +454,22 @@ class ClusterCounter(QWidget):
                             str(self.clusterComboBox.currentText()) + "_ROI"].data)
                 elif self.roiTypeComboBox.currentText() == "Line":
                     if final:
-                        self.TempDb["Line"] = {"length": [], "width": [], "area": []}
+                        self.TempDb["Line"] = {"length": [], "width": [], "area": [], "bg_width": [], "bg_area": [], "bg_intensity": []}
                     LineROIs = self.ConvertLinesToBinary(
                         self.viewer.layers[str(self.clusterComboBox.currentText()) + "_ROI"].data,
                         self.viewer.layers[str(self.clusterComboBox.currentText()) + "_ROI"].edge_width)
 
                     for canvas in LineROIs:
                         ROIs.append(self.viewer.layers[str(self.clusterComboBox.currentText()) + "_mask"].data * canvas)
+
             else:
                 # TODO: Pass warning message that no manual mask is available
                 pass
         if self.activeOption == "ROI":
             if final:
-                self.TempDb["ROI"] = np.sum(self.viewer.layers[str(self.roiComboBox.currentText()) + "_ROI"].data)
+                self.TempDb["ROI"] = {"area": np.sum(self.viewer.layers[str(self.roiComboBox.currentText()) + "_ROI"].data),
+                                      "length": area_to_length(self.viewer.layers[str(self.roiComboBox.currentText()) + "_ROI"].data)}
+
             if (str(self.roiComboBox.currentText()) + "_ROI") in self.viewer.layers:
                 ROIs.append(
                     self.viewer.layers[str(self.clusterComboBox.currentText()) + "_mask"].data * self.viewer.layers[
@@ -572,8 +593,12 @@ class ClusterCounter(QWidget):
                     df["Line_Length"] = self.TempDb[i]["length"][index]
                     df["Line_Width"] = self.TempDb[i]["width"][index]
                     df["Line_Area"] = self.TempDb[i]["area"][index]
+                    df["bg_width"] = self.TempDb[i]["bg_width"][index]
+                    df["bg_area"] = self.TempDb[i]["bg_area"][index]
+                    df["bg_intensity"] = self.TempDb[i]["bg_intensity"][index]
                 else:
-                    df["ROI_Area"] = self.TempDb[i]
+                    df["ROI_Area"] = self.TempDb[i]["area"]
+                    df["ROI_Length"] = self.TempDb[i]["length"]
 
             # Add to database and list
             conn = sqlite3.connect(f"{os.path.dirname(os.path.abspath(__file__))}/Temp.sqlite")
@@ -628,10 +653,19 @@ class ClusterCounter(QWidget):
                                          'Average eccentricity',
                                          'ROI Area (px)',
                                          'ROI Area (um)',
+                                         'ROI Area Length (px)',
+                                         'ROI Area Length (um)',
                                          'ROI Line Length (px)',
                                          'ROI Line Length (um)',
                                          'ROI Line Width (px)',
-                                         'ROI Line Width (um)'])
+                                         'ROI Line Width (um)',
+                                         'ROI Line Area (px)',
+                                         'ROI Line Area (um)',
+                                         'ROI Line Background Width (px)',
+                                         'ROI Line Background Width (um)',
+                                         'ROI Line Background Area (px)',
+                                         'ROI Line Background Area (um)',
+                                         'ROI Line Background Intensity'])
 
         for i in tables:
             df = pd.read_sql(f"SELECT * FROM '{i}'", conn)
@@ -652,10 +686,19 @@ class ClusterCounter(QWidget):
                 "Average eccentricity": df["eccentricity"].mean(),
                 "ROI Area (px)": (df["ROI_Area"].mean() if "ROI_Area" in df else np.nan),
                 "ROI Area (um)": (df["ROI_Area"].mean() * df["resolution"].mean() ** 2 if "ROI_Area" in df else np.nan),
+                "ROI Area Length (px)": (df["ROI_Length"].mean() if "ROI_Length" in df else np.nan),
+                "ROI Area Length (um)": (df["ROI_Length"].mean() * df["resolution"].mean() if "ROI_Length" in df else np.nan),
                 "ROI Line Length (px)": (df["Line_Length"].mean() if "Line_Length" in df else np.nan),
                 "ROI Line Length (um)": (df["Line_Length"].mean() * df["resolution"].mean() if "Line_Length" in df else np.nan),
                 "ROI Line Width (px)": (df["Line_Width"].mean() if "Line_Width" in df else np.nan),
-                "ROI Line Width (um)": (df["Line_Width"].mean() * df["resolution"].mean() if "Line_Width" in df else np.nan)
+                "ROI Line Width (um)": (df["Line_Width"].mean() * df["resolution"].mean() if "Line_Width" in df else np.nan),
+                "ROI Line Area (px)": (df["Line_Area"].mean() if "Line_Area" in df else np.nan),
+                "ROI Line Area (um)": (df["Line_Area"].mean() * df["resolution"].mean() ** 2 if "Line_Area" in df else np.nan),
+                "ROI Line Background Width (px)": (df["bg_width"].mean() if "bg_width" in df else np.nan),
+                "ROI Line Background Width (um)": (df["bg_width"].mean() * df["resolution"].mean() if "bg_width" in df else np.nan),
+                "ROI Line Background Area (px)": (df["bg_area"].mean() if "bg_area" in df else np.nan),
+                "ROI Line Background Area (um)": (df["bg_area"].mean() * df["resolution"].mean() ** 2 if "bg_area" in df else np.nan),
+                "ROI Line Background Intensity": (df["bg_intensity"].mean() if "bg_intensity" in df else np.nan)
 
 
 
