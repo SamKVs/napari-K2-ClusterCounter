@@ -241,13 +241,17 @@ class ClusterCounter(QWidget):
                     self.clusterComboBox.currentText()].scale
                 intensity_back = np.mean(self.viewer.layers[self.clusterComboBox.currentText()].data[line_back])
 
+            if self.addChannelComboBox.currentText() != "None":
+                intensity_back_add = np.mean(self.viewer.layers[self.addChannelComboBox.currentText()].data[line_back])
+
             if self.TempDb is not None:
                 self.TempDb["Line"]["length"].append(self.getlength(poly))
                 self.TempDb["Line"]["width"].append(width[index])
                 self.TempDb["Line"]["area"].append(np.sum(canvas))
                 self.TempDb["Line"]["bg_width"].append(width[index] * self.lineBackSpinBox.value())
                 self.TempDb["Line"]["bg_area"].append(np.sum(line_back))
-                self.TempDb["Line"]["bg_intensity"].append(intensity_back)
+                self.TempDb["Line"]["bg_intensity"].append(intensity_back) if self.lineBackSpinBox.value() != 0 else self.TempDb["Line"]["bg_intensity"].append(0)
+                self.TempDb["Line"]["bg_intensity_add"].append(intensity_back_add) if self.addChannelComboBox.currentText() != "None" else self.TempDb["Line"]["bg_intensity_add"].append(np.nan)
             canvases.append(canvas)
         return canvases
 
@@ -454,7 +458,7 @@ class ClusterCounter(QWidget):
                             str(self.clusterComboBox.currentText()) + "_ROI"].data)
                 elif self.roiTypeComboBox.currentText() == "Line":
                     if final:
-                        self.TempDb["Line"] = {"length": [], "width": [], "area": [], "bg_width": [], "bg_area": [], "bg_intensity": []}
+                        self.TempDb["Line"] = {"length": [], "width": [], "area": [], "bg_width": [], "bg_area": [], "bg_intensity": [], "bg_intensity_add": []}
                     LineROIs = self.ConvertLinesToBinary(
                         self.viewer.layers[str(self.clusterComboBox.currentText()) + "_ROI"].data,
                         self.viewer.layers[str(self.clusterComboBox.currentText()) + "_ROI"].edge_width)
@@ -596,6 +600,8 @@ class ClusterCounter(QWidget):
                     df["bg_width"] = self.TempDb[i]["bg_width"][index]
                     df["bg_area"] = self.TempDb[i]["bg_area"][index]
                     df["bg_intensity"] = self.TempDb[i]["bg_intensity"][index]
+                    if self.addChannelComboBox.currentText() != "None":
+                        df["bg_intensity_AC"] = self.TempDb[i]["bg_intensity_add"][index]
                 else:
                     df["ROI_Area"] = self.TempDb[i]["area"]
                     df["ROI_Length"] = self.TempDb[i]["length"]
@@ -665,7 +671,8 @@ class ClusterCounter(QWidget):
                                          'ROI Line Background Width (um)',
                                          'ROI Line Background Area (px)',
                                          'ROI Line Background Area (um)',
-                                         'ROI Line Background Intensity'])
+                                         'ROI Line Background Intensity',
+                                         'ROI Line Background Intensity AC'])
 
         for i in tables:
             df = pd.read_sql(f"SELECT * FROM '{i}'", conn)
@@ -698,7 +705,8 @@ class ClusterCounter(QWidget):
                 "ROI Line Background Width (um)": (df["bg_width"].mean() * df["resolution"].mean() if "bg_width" in df else np.nan),
                 "ROI Line Background Area (px)": (df["bg_area"].mean() if "bg_area" in df else np.nan),
                 "ROI Line Background Area (um)": (df["bg_area"].mean() * df["resolution"].mean() ** 2 if "bg_area" in df else np.nan),
-                "ROI Line Background Intensity": (df["bg_intensity"].mean() if "bg_intensity" in df else np.nan)
+                "ROI Line Background Intensity": (df["bg_intensity"].mean() if "bg_intensity" in df else np.nan),
+                "ROI Line Background Intensity AC": (df["bg_intensity_AC"].mean() if "bg_intensity_AC" in df else np.nan)
 
 
 
