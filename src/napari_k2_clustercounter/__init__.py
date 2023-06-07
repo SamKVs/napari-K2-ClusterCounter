@@ -1,4 +1,4 @@
-__version__ = "0.0.2"
+__version__ = "0.0.4"
 from ._widget import ClusterCounter
 from . import ClickLabel
 from . import DrawLine

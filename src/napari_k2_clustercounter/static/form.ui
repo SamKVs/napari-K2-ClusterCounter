@@ -254,6 +254,13 @@
              </property>
             </widget>
            </item>
+           <item>
+            <widget class="QSpinBox" name="threshBox">
+             <property name="maximum">
+              <number>1000</number>
+             </property>
+            </widget>
+           </item>
           </layout>
          </item>
          <item>
