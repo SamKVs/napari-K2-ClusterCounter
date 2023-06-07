@@ -86,6 +86,10 @@ class ClusterCounter(QWidget):
         self.basinComboBox.currentTextChanged.connect(self.updatebasins)
         self.lmpThreshGenerate.clicked.connect(self.LocalMaxPeakShow)
 
+        # Threshold slider/box sync
+        self.threshSlider.valueChanged.connect(self.threshSetValueS)
+        self.threshBox.valueChanged.connect(self.threshSetValueB)
+
         # Update scale
         self.clusterComboBox.currentTextChanged.connect(self.updatescale)
 
@@ -121,6 +125,13 @@ class ClusterCounter(QWidget):
         con.close()
 
     # UTILITY FUNCTIONS
+    def threshSetValueS(self):
+        self.threshBox.setValue(self.threshSlider.value())
+
+    def threshSetValueB(self):
+        self.threshSlider.setValue(self.threshBox.value())
+
+
     def updatescale(self):
         try:
             scale = self.viewer.layers[self.clusterComboBox.currentText()].scale
