@@ -17,9 +17,14 @@ from skimage.segmentation import watershed
 from skimage.feature import peak_local_max
 from skimage import measure
 from scipy import ndimage as ndi
-from .DrawLine import draw_path
-from .ClickLabel import ClickLabel
-from .AreaToLength import area_to_length
+try:
+    from .DrawLine import draw_path
+    from .ClickLabel import ClickLabel
+    from .AreaToLength import area_to_length
+except ImportError:
+    from DrawLine import draw_path
+    from ClickLabel import ClickLabel
+    from AreaToLength import area_to_length
 import sqlite3
 import pandas as pd
 import os
@@ -596,7 +601,10 @@ class ClusterCounter(QWidget):
                                                                  'min_intensity'])
 
                 for j in addprops:
-                    df[str(j) + '_AC'] = addprops[j]
+                    if len(addprops[j]) == 0:
+                        df[str(j) + '_AC'] = np.nan
+                    else:
+                        df[str(j) + '_AC'] = addprops[j]
 
 
             # Edit dataframe
@@ -736,3 +744,15 @@ class ClusterCounter(QWidget):
 @napari_hook_implementation
 def napari_experimental_provide_dock_widget():
     return ClusterCounter
+
+
+if __name__ == '__main__':
+    from napari import Viewer, run
+
+    viewer = Viewer()
+
+    CC_widget = ClusterCounter(viewer)  # Create instance from our class
+    viewer.window.add_dock_widget(CC_widget, area='right')  # Add our gui instance to napari viewer
+
+
+    run()
