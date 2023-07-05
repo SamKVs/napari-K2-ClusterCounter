@@ -35,4 +35,8 @@ def area_to_length(area):
     fil.medskel(verbose=False)
     fil.analyze_skeletons(branch_thresh=40* u.pix, skel_thresh=10 * u.pix, prune_criteria='length')
 
-    return max(fil.lengths())
+
+    if len(fil.lengths()) == 0:
+        return np.nan
+    else:
+        return max(fil.lengths())
